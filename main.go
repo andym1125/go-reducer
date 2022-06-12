@@ -39,6 +39,8 @@ func main() {
 	WriteOutData("signature_list.txt")
 }
 
+/* ========== File Handling ========== */
+
 func WriteOutData(filestr string) {
 
 	file, err := os.Create(filestr)
@@ -74,19 +76,13 @@ func ProcessFile(fileStr string) {
 	}
 
 	reader := NewReader(data)
-
-	counter := 0
 	for !reader.Eof() {
 		line := reader.Readln()
 
 		if Contains([]byte("func"), line) {
-
 			ProcessLine(string(line))
-			counter++
 		}
 	}
-
-	fmt.Println("Func lines found:", counter)
 
 	defer file.Close()
 }
@@ -100,6 +96,34 @@ func ProcessLine(input string) {
 		notSigs = append(notSigs, input)
 	}
 }
+
+/* ============= Signature Object =============== */
+
+type Signature struct {
+	actupon    string
+	id         string
+	params     string
+	returnData string
+
+	raw string
+}
+
+func SigFromRegex(regex []string) *Signature {
+	return &Signature{
+		actupon:    regex[1],
+		id:         regex[2],
+		params:     regex[3],
+		returnData: regex[4],
+
+		raw: regex[0],
+	}
+}
+
+func (s *Signature) ToString() string {
+	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id, s.actupon, s.params, s.returnData, s.raw)
+}
+
+/* ========== Misc ========== */
 
 func Contains(target []byte, repo []byte) bool {
 
@@ -166,30 +190,4 @@ func PrintRegexGroups() {
 	fmt.Println(idt)
 	fmt.Println("Identifier:---------------------")
 	fmt.Println(idt)
-}
-
-/* ============= Signature Object =============== */
-
-type Signature struct {
-	actupon    string
-	id         string
-	params     string
-	returnData string
-
-	raw string
-}
-
-func SigFromRegex(regex []string) *Signature {
-	return &Signature{
-		actupon:    regex[1],
-		id:         regex[2],
-		params:     regex[3],
-		returnData: regex[4],
-
-		raw: regex[0],
-	}
-}
-
-func (s *Signature) ToString() string {
-	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id, s.actupon, s.params, s.returnData, s.raw)
 }
