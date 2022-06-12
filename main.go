@@ -18,6 +18,8 @@ var returnlistg string = fmt.Sprintf(`\s*((?:\s*\(\s*(?:\s*%s\s*(?:\s*\,\s*%s\s*
 var signatureg string = fmt.Sprintf(`\s*func\s*%s\s*(%s)\s*%s\s*%s\s*\{\s*`, actupong, idt, paramlistg, returnlistg)            //"(%{idt})(\(%{paramlistt}\))(\(%{paramlistt}\))"
 
 var sigReg *regexp.Regexp
+var sigs []*Signature
+var notSigs []string
 
 func init() {
 	sigReg = regexp.MustCompile(signatureg)
@@ -27,6 +29,28 @@ func main() {
 	fmt.Println(signatureg)
 
 	ProcessFile("tx.pb.go.dat")
+
+	fmt.Println("Processed signatures:", len(sigs))
+	fmt.Println("Uncaught sigs:", len(notSigs))
+	for _, a := range notSigs {
+		fmt.Println(a)
+	}
+
+	WriteOutData("signature_list.txt")
+}
+
+func WriteOutData(filestr string) {
+
+	file, err := os.Create(filestr)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, a := range sigs {
+		file.Write([]byte(a.ToString()))
+	}
+
+	defer file.Close()
 }
 
 func ProcessFile(fileStr string) {
@@ -56,11 +80,8 @@ func ProcessFile(fileStr string) {
 		line := reader.Readln()
 
 		if Contains([]byte("func"), line) {
-			fmt.Println(string(line), "--------------")
 
-			for _, a := range sigReg.FindStringSubmatch(string(line)) {
-				fmt.Println(a)
-			}
+			ProcessLine(string(line))
 			counter++
 		}
 	}
@@ -68,6 +89,16 @@ func ProcessFile(fileStr string) {
 	fmt.Println("Func lines found:", counter)
 
 	defer file.Close()
+}
+
+func ProcessLine(input string) {
+
+	regex := sigReg.FindStringSubmatch(input)
+	if len(regex) >= 1 {
+		sigs = append(sigs, SigFromRegex(regex))
+	} else {
+		notSigs = append(notSigs, input)
+	}
 }
 
 func Contains(target []byte, repo []byte) bool {
@@ -135,4 +166,30 @@ func PrintRegexGroups() {
 	fmt.Println(idt)
 	fmt.Println("Identifier:---------------------")
 	fmt.Println(idt)
+}
+
+/* ============= Signature Object =============== */
+
+type Signature struct {
+	actupon    string
+	id         string
+	params     string
+	returnData string
+
+	raw string
+}
+
+func SigFromRegex(regex []string) *Signature {
+	return &Signature{
+		actupon:    regex[1],
+		id:         regex[2],
+		params:     regex[3],
+		returnData: regex[4],
+
+		raw: regex[0],
+	}
+}
+
+func (s *Signature) ToString() string {
+	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id, s.actupon, s.params, s.returnData, s.raw)
 }
