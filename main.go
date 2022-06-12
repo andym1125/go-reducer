@@ -8,8 +8,9 @@ import (
 	"regexp"
 )
 
+//Initial match regex
 var idt string = "(?:[_qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM][_\\w]*)"
-var typet string = `[^\(\)]+` //every char except () to prevent consuming more than one set of parens
+var typet string = `[^\(\)\{\}]+` //every char except () to prevent consuming more than one set of parens
 var paramt string = fmt.Sprintf(`(?:\s*%s\s+%s\s*)`, idt, typet)
 
 var actupong string = fmt.Sprintf(`\s*(\s*\(\s*(?:\s*%s\s+)?\s*\*?\s*%s\s*\)\s*)?\s*`, idt, idt)                                //"(\((?:${idt}\s+)?\*?${idt}\))?" || "\s*(\s*\(\s*(?:\s*${idt}\s+)?\s*\*?\s*${idt}\s*\)\s*)?\s*"
@@ -17,6 +18,9 @@ var paramlistg string = fmt.Sprintf(`\s*(\s*\(\s*(?:\s*%s\s*(?:\s*\,\s*%s\s*)*\s
 var returnlistg string = fmt.Sprintf(`\s*((?:\s*\(\s*(?:\s*%s\s*(?:\s*\,\s*%s\s*)*\s*)?\s*\)\s*)|%s)\s*?`, typet, typet, typet) //"((?:\((?:${typet}(?:\,${typet})*)?\))|${typet})?" || "\s*((?:\s*\(\s*(?:\s*${typet}\s*(?:\s*\,\s*${typet}\s*)*\s*)?\s*\)\s*)|${typet})\s*?"
 var signatureg string = fmt.Sprintf(`\s*func\s*%s\s*(%s)\s*%s\s*%s\s*\{\s*`, actupong, idt, paramlistg, returnlistg)            //"(%{idt})(\(%{paramlistt}\))(\(%{paramlistt}\))"
 
+//Cleanup regex
+
+//State vars
 var sigReg *regexp.Regexp
 var sigs []*Signature
 var notSigs []string
@@ -36,12 +40,32 @@ func main() {
 		fmt.Println(a)
 	}
 
-	WriteOutData("signature_list.txt")
+	WriteOutSigs("signature_list.txt")
+	QuickWrite("ids.txt", GetAllIdRaw())
+	QuickWrite("params.txt", GetAllParamsRaw())
+	QuickWrite("actupon.txt", GetAllActuponRaw())
+	QuickWrite("returns.txt", GetAllReturnDataRaw())
 }
 
 /* ========== File Handling ========== */
 
-func WriteOutData(filestr string) {
+//For debugging. Writes data to file, separated by newline
+func QuickWrite(filestr string, data []string) {
+
+	file, err := os.Create(filestr)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, s := range data {
+		file.Write([]byte(s))
+		file.Write([]byte("\n"))
+	}
+
+	defer file.Close()
+}
+
+func WriteOutSigs(filestr string) {
 
 	file, err := os.Create(filestr)
 	if err != nil {
@@ -100,27 +124,63 @@ func ProcessLine(input string) {
 /* ============= Signature Object =============== */
 
 type Signature struct {
-	actupon    string
-	id         string
-	params     string
-	returnData string
+	actupon_raw    string
+	id_raw         string
+	params_raw     string
+	returnData_raw string
 
 	raw string
 }
 
 func SigFromRegex(regex []string) *Signature {
 	return &Signature{
-		actupon:    regex[1],
-		id:         regex[2],
-		params:     regex[3],
-		returnData: regex[4],
+		actupon_raw:    regex[1],
+		id_raw:         regex[2],
+		params_raw:     regex[3],
+		returnData_raw: regex[4],
 
 		raw: regex[0],
 	}
 }
 
 func (s *Signature) ToString() string {
-	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id, s.actupon, s.params, s.returnData, s.raw)
+	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id_raw, s.actupon_raw, s.params_raw, s.returnData_raw, s.raw)
+}
+
+//For debugging. Returns list of all actupons for testing
+func GetAllActuponRaw() []string {
+	var ret []string
+	for _, a := range sigs {
+		ret = append(ret, "'"+a.actupon_raw+"'")
+	}
+	return ret
+}
+
+//For debugging. Returns list of all actupons for testing
+func GetAllIdRaw() []string {
+	var ret []string
+	for _, a := range sigs {
+		ret = append(ret, "'"+a.id_raw+"'")
+	}
+	return ret
+}
+
+//For debugging. Returns list of all actupons for testing
+func GetAllParamsRaw() []string {
+	var ret []string
+	for _, a := range sigs {
+		ret = append(ret, "'"+a.params_raw+"'")
+	}
+	return ret
+}
+
+//For debugging. Returns list of all actupons for testing
+func GetAllReturnDataRaw() []string {
+	var ret []string
+	for _, a := range sigs {
+		ret = append(ret, "'"+a.returnData_raw+"'")
+	}
+	return ret
 }
 
 /* ========== Misc ========== */
