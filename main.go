@@ -19,6 +19,7 @@ var returnlistg string = fmt.Sprintf(`\s*((?:\s*\(\s*(?:\s*%s\s*(?:\s*\,\s*%s\s*
 var signatureg string = fmt.Sprintf(`\s*func\s*%s\s*(%s)\s*%s\s*%s\s*\{\s*`, actupong, idt, paramlistg, returnlistg)            //"(%{idt})(\(%{paramlistt}\))(\(%{paramlistt}\))"
 
 //Cleanup regex
+var cleanupToken *regexp.Regexp = regexp.MustCompile(`[^\(\)\{\}\,\s]+`)
 
 //State vars
 var sigReg *regexp.Regexp
@@ -31,6 +32,10 @@ func init() {
 
 func main() {
 	fmt.Println(signatureg)
+
+	fmt.Println((`()        `))
+	fmt.Println((`(b []byte) `))
+	fmt.Println((`(b []byte, deterministic bool) `))
 
 	ProcessFile("tx.pb.go.dat")
 
@@ -145,6 +150,11 @@ func SigFromRegex(regex []string) *Signature {
 
 func (s *Signature) ToString() string {
 	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id_raw, s.actupon_raw, s.params_raw, s.returnData_raw, s.raw)
+}
+
+func CleanupParams(input string) []string {
+
+	return cleanupToken.FindAllString(input, -1)
 }
 
 //For debugging. Returns list of all actupons for testing
