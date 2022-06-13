@@ -19,7 +19,8 @@ var returnlistg string = fmt.Sprintf(`\s*((?:\s*\(\s*(?:\s*%s\s*(?:\s*\,\s*%s\s*
 var signatureg string = fmt.Sprintf(`\s*func\s*%s\s*(%s)\s*%s\s*%s\s*\{\s*`, actupong, idt, paramlistg, returnlistg)            //"(%{idt})(\(%{paramlistt}\))(\(%{paramlistt}\))"
 
 //Cleanup regex
-var cleanupToken *regexp.Regexp = regexp.MustCompile(`[^\(\)\{\}\,\s]+`)
+var cleanupRetToken *regexp.Regexp = regexp.MustCompile(`[^\(\)\{\}\,\s]+`)
+var cleanupParamToken *regexp.Regexp = regexp.MustCompile(`[^\(\)\{\}\,\s]+\s+[^\(\)\{\}\,\s]+`)
 
 //State vars
 var sigReg *regexp.Regexp
@@ -33,9 +34,9 @@ func init() {
 func main() {
 	fmt.Println(signatureg)
 
-	fmt.Println((`()        `))
-	fmt.Println((`(b []byte) `))
-	fmt.Println((`(b []byte, deterministic bool) `))
+	// fmt.Println(CleanupParams(`()        `))
+	// fmt.Println(CleanupParams(`(b []byte) `))
+	// fmt.Println(CleanupParams(`(b []byte, deterministic bool) `))
 
 	ProcessFile("tx.pb.go.dat")
 
@@ -129,16 +130,20 @@ func ProcessLine(input string) {
 /* ============= Signature Object =============== */
 
 type Signature struct {
+	actupon    string
+	id         string
+	params     []string
+	returnData []string
+
 	actupon_raw    string
 	id_raw         string
 	params_raw     string
 	returnData_raw string
-
-	raw string
+	raw            string
 }
 
 func SigFromRegex(regex []string) *Signature {
-	return &Signature{
+	s := &Signature{
 		actupon_raw:    regex[1],
 		id_raw:         regex[2],
 		params_raw:     regex[3],
@@ -146,15 +151,25 @@ func SigFromRegex(regex []string) *Signature {
 
 		raw: regex[0],
 	}
+
+	//s.actupon
+	s.id = s.id_raw
+	s.params = CleanupParams(s.params_raw)
+	s.returnData = CleanupReturns(s.returnData_raw)
+
+	return s
 }
 
 func (s *Signature) ToString() string {
-	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id_raw, s.actupon_raw, s.params_raw, s.returnData_raw, s.raw)
+	return fmt.Sprintf("----- %s -----\nActs upon:\t'%s'\nParameters:\t'%s'\nReturns:\t'%s'\nRaw line:\t'%s'\n\n", s.id, s.actupon_raw, PrettyStrArr(s.params), PrettyStrArr(s.returnData), s.raw)
 }
 
 func CleanupParams(input string) []string {
+	return cleanupParamToken.FindAllString(input, -1)
+}
 
-	return cleanupToken.FindAllString(input, -1)
+func CleanupReturns(input string) []string {
+	return cleanupRetToken.FindAllString(input, -1)
 }
 
 //For debugging. Returns list of all actupons for testing
@@ -194,6 +209,18 @@ func GetAllReturnDataRaw() []string {
 }
 
 /* ========== Misc ========== */
+
+func PrettyStrArr(data []string) string {
+	ret := "["
+	for i, a := range data {
+		ret = ret + "'" + a + "'"
+
+		if i != len(data)-1 {
+			ret = ret + ", "
+		}
+	}
+	return ret + "]"
+}
 
 func Contains(target []byte, repo []byte) bool {
 
